@@ -1,0 +1,8 @@
+# Runtime dependencies for Vercel (Python runtime reads this file).
+# Keep in sync with pyproject.toml [project.dependencies].
+mcp>=1.2,<2
+numpy>=1.26
+scipy>=1.11
+uvicorn>=0.30
+yfinance>=0.2.40
+pandas>=2.0

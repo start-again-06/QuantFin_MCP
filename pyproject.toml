@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-mcp"
+version = "1.0.0"
+description = "Quantitative finance calculators (pricing, risk, portfolio optimisation, backtesting) as an MCP server."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Anjan Mahapatra" }]
+keywords = ["finance", "quant", "options", "risk", "portfolio", "backtesting", "mcp"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+dependencies = [
+    "mcp>=1.2,<2",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+market = ["yfinance>=0.2.40", "pandas>=2.0"]
+dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "build>=1.2", "yfinance>=0.2.40", "pandas>=2.0", "httpx2"]
+
+[project.scripts]
+quant-mcp = "quant_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+quant_mcp = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["network: tests that reach external market-data providers (deselect with -m 'not network')"]
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "RUF"]
+ignore = ["N806", "N803", "E741", "RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+ignore_missing_imports = true
+files = ["src/quant_mcp"]
