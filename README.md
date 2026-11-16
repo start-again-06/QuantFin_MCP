@@ -3,17 +3,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server with quantitative finance tools: option
-pricing, fixed income, risk, portfolio optimisation, backtesting and position sizing. An MCP-capable assistant can call
-these tools directly on data you provide.
+An [MCP](https://modelcontextprotocol.io) server packed with quant finance tools: option pricing, fixed income, risk,
+portfolio optimisation, backtesting and position sizing. Plug it into an AI assistant and let it do the number crunching
+on the data you bring.
 
-It runs over **stdio** for local clients, or over **streamable HTTP** for hosted deployments such as Vercel.
+It talks over **stdio** for local stuff, or **streamable HTTP** when you want it hosted (Vercel works great).
 
-> **Not investment advice.** These are calculators. Outputs depend entirely on the inputs and assumptions you supply.
+> **Not investment advice.** These are calculators, not a crystal ball. Garbage in, garbage out.
 
 ## Contents
 
-- [Features](#features)
+- [What's in the box](#whats-in-the-box)
 - [How it works](#how-it-works)
 - [Quick start](#quick-start)
 - [Running the server](#running-the-server)
@@ -26,7 +26,7 @@ It runs over **stdio** for local clients, or over **streamable HTTP** for hosted
 - [Limits](#limits)
 - [License](#license)
 
-## Features
+## What's in the box
 
 | Area | Tools |
 | --- | --- |
@@ -39,7 +39,7 @@ It runs over **stdio** for local clients, or over **streamable HTTP** for hosted
 | Position sizing | `kelly_fraction`, `kelly_continuous`, `position_size` |
 | Market data | `price_history` via Yahoo Finance (no key) or Alpha Vantage (key required) |
 
-The full parameter reference is in [docs/tools.md](docs/tools.md), generated from the live tool registry.
+24 tools total. Full parameter reference is in [docs/tools.md](docs/tools.md), auto-generated from the live registry so it never lies to you.
 
 ```mermaid
 mindmap
@@ -79,8 +79,8 @@ mindmap
 
 ## How it works
 
-The server is a thin MCP layer over pure numerical code. Tools validate their inputs, call the calculation modules, and
-return results. Nothing in the calculation core does I/O.
+The server is a thin MCP layer on top of pure number-crunching code. Tools check your inputs, hand them to the calc
+modules, and send back results. The calc core doesn't touch the network or disk, so it's easy to test and reuse.
 
 ```mermaid
 flowchart LR
@@ -117,7 +117,7 @@ flowchart LR
 
 ### Request pipeline (HTTP)
 
-Each request to `/mcp` passes through these checks in order. Each one can stop the request before the next runs.
+Every request to `/mcp` has to get past these checks in order. Any of them can bounce it before the next one runs.
 
 ```mermaid
 sequenceDiagram
@@ -149,11 +149,11 @@ sequenceDiagram
     end
 ```
 
-`/healthz` and `/` skip the token check. `/healthz` also skips the rate limit.
+`/healthz` and `/` skip the token check. `/healthz` also skips the rate limit, because uptime pings shouldn't get throttled.
 
 ## Quick start
 
-Requires Python 3.11 to 3.13.
+You'll need Python 3.11 to 3.13.
 
 ```bash
 git clone https://github.com/OWNER/quant-mcp.git
@@ -163,11 +163,11 @@ pip install -e ".[dev]"
 pytest -m "not network"
 ```
 
-On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1` instead.
+On Windows PowerShell, use `.venv\Scripts\Activate.ps1` instead of the `source` line.
 
 ## Running the server
 
-Pick a transport based on where the client runs.
+Pick a transport based on where your client lives.
 
 ```mermaid
 flowchart TD
@@ -202,12 +202,14 @@ Endpoints:
 | `GET /` | open | Service name, version and endpoint list |
 | `POST /mcp` | `Authorization: Bearer <token>` | MCP streamable-HTTP endpoint |
 
-Check it:
+Quick sanity check:
 
 ```bash
 curl http://127.0.0.1:8000/healthz
 curl -i -X POST http://127.0.0.1:8000/mcp -H "Content-Type: application/json" -d '{}'   # expect 401
 ```
+
+Getting a 401 is the win here. It means the door is locked.
 
 ### Docker
 
@@ -216,11 +218,11 @@ docker build -t quant-mcp .
 docker run --rm -p 8000:8000 -e QUANT_MCP_API_TOKEN="$QUANT_MCP_API_TOKEN" quant-mcp
 ```
 
-Deployment to Vercel, Docker hosts and self-hosting is covered in [docs/deployment.md](docs/deployment.md).
+Vercel, Docker hosts and self-hosting details live in [docs/deployment.md](docs/deployment.md).
 
 ## Connecting a client
 
-Stdio clients need only the command path. HTTP clients also need the token header.
+Stdio clients just need the command path. HTTP clients also need the token header, no way around it.
 
 **Local (stdio)**
 
@@ -241,11 +243,11 @@ claude mcp add --transport http quant https://YOUR-PROJECT.vercel.app/mcp \
   --header "Authorization: Bearer $QUANT_MCP_API_TOKEN"
 ```
 
-Other clients, and the generic JSON form, are in [docs/client-config.md](docs/client-config.md).
+Other clients and the generic JSON format are in [docs/client-config.md](docs/client-config.md).
 
 ## Configuration
 
-All configuration is through environment variables. See [.env.example](.env.example).
+Everything is set through environment variables. The full list with placeholder values is in [.env.example](.env.example).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -262,17 +264,14 @@ All configuration is through environment variables. See [.env.example](.env.exam
 
 ## Security
 
-- **Bearer token.** `/mcp` requires `Authorization: Bearer <QUANT_MCP_API_TOKEN>`. The comparison is constant-time. The
-  server refuses to start with a token shorter than 32 characters.
-- **Fails closed.** With no token set, `/mcp` returns `503` rather than running unauthenticated.
-- **One shared secret.** The token grants full access to the deployment. It is not per-user, and there is no revocation
-  list. Rotate it by replacing the environment variable and redeploying.
-- **Rate limit and body cap.** The rate limit runs before the token check, so guessing is limited too. Request bodies are
-  capped at 1 MiB.
-- **Provider allow-list.** Alpha Vantage is off by default, so callers cannot spend your API quota.
-- **Logs.** Tool inputs are never logged, because they can be proprietary return series.
+- **Bearer token.** `/mcp` needs `Authorization: Bearer <QUANT_MCP_API_TOKEN>`. The check is constant-time, and the server refuses to start with a token under 32 characters.
+- **Fails closed.** No token set means `/mcp` returns `503`. It won't quietly run unlocked.
+- **One shared key for everyone.** Whoever has the token has full access. There are no per-user keys and no revocation list, so rotate it by swapping the env var and redeploying.
+- **Rate limit and body cap.** The rate limit runs before the token check, so brute-forcing gets throttled too. Bodies are capped at 1 MiB.
+- **Provider allow-list.** Alpha Vantage is off by default, so random callers can't burn your API quota.
+- **No input logging.** Tool inputs never hit the logs, since they can be proprietary return series.
 
-Report vulnerabilities privately. See [SECURITY.md](SECURITY.md).
+Found a vulnerability? Report it privately, not as a public issue. See [SECURITY.md](SECURITY.md).
 
 ## Conventions
 
@@ -293,7 +292,7 @@ python scripts/generate_tool_docs.py --check
 
 Live provider tests are opt-in: `QUANT_MCP_RUN_NETWORK_TESTS=1 pytest -m network`.
 
-Smoke-test a running deployment:
+Smoke-test a live deployment:
 
 ```bash
 QUANT_MCP_API_TOKEN=... python scripts/smoke_test.py https://YOUR-PROJECT.vercel.app
@@ -310,9 +309,9 @@ QUANT_MCP_API_TOKEN=... python scripts/smoke_test.py https://YOUR-PROJECT.vercel
 
 ## Limits
 
-- European options only in `black_scholes`. `american_option` uses a CRR tree with a continuous dividend yield.
-- Backtests are research tools. They have no slippage model beyond a flat cost in basis points.
-- Market data is not licensed or real-time. Check the terms of Yahoo Finance or Alpha Vantage before commercial use.
+- `black_scholes` is European only. `american_option` uses a CRR tree with a continuous dividend yield.
+- Backtests are research tools. The only slippage model is a flat cost in basis points, so don't expect real-world fills.
+- Market data isn't licensed or real-time. Check the Yahoo Finance or Alpha Vantage terms before going commercial.
 
 ## License
 
